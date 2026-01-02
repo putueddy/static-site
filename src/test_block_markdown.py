@@ -1,5 +1,10 @@
 import unittest
-from block_markdown import markdown_to_blocks, block_to_block_type, BlockType
+from block_markdown import (
+    markdown_to_blocks,
+    block_to_block_type,
+    BlockType,
+    markdown_to_html_node,
+)
 
 
 class TestMarkdownToBlocks(unittest.TestCase):
@@ -293,6 +298,154 @@ class TestBlockToBlockType(unittest.TestCase):
     def test_quote_with_indentation(self):
         block = "> Quote line 1\n> Quote line 2"
         self.assertEqual(block_to_block_type(block), BlockType.QUOTE)
+
+
+class TestMarkdownToHTMLNode(unittest.TestCase):
+    def test_paragraphs(self):
+        md = """
+This is **bolded** paragraph
+text in a p
+tag here
+
+This is another paragraph with _italic_ text and `code` here
+
+"""
+        node = markdown_to_html_node(md)
+        html = node.to_html()
+        self.assertEqual(
+            html,
+            "<div><p>This is <b>bolded</b> paragraph text in a p tag here</p><p>This is another paragraph with <i>italic</i> text and <code>code</code> here</p></div>",
+        )
+
+    def test_codeblock(self):
+        md = """
+```
+This is text that _should_ remain
+the **same** even with inline stuff
+```
+"""
+        node = markdown_to_html_node(md)
+        html = node.to_html()
+        self.assertEqual(
+            html,
+            "<div><pre><code>This is text that _should_ remain\nthe **same** even with inline stuff\n</code></pre></div>",
+        )
+
+    def test_heading(self):
+        md = "# This is a heading"
+        node = markdown_to_html_node(md)
+        html = node.to_html()
+        self.assertEqual(html, "<div><h1>This is a heading</h1></div>")
+
+    def test_heading_with_inline(self):
+        md = "## This is a **bold** heading"
+        node = markdown_to_html_node(md)
+        html = node.to_html()
+        self.assertEqual(html, "<div><h2>This is a <b>bold</b> heading</h2></div>")
+
+    def test_multiple_headings(self):
+        md = """# Heading 1
+
+## Heading 2
+
+### Heading 3"""
+        node = markdown_to_html_node(md)
+        html = node.to_html()
+        self.assertEqual(
+            html,
+            "<div><h1>Heading 1</h1><h2>Heading 2</h2><h3>Heading 3</h3></div>",
+        )
+
+    def test_quote(self):
+        md = "> This is a quote\n> with multiple lines"
+        node = markdown_to_html_node(md)
+        html = node.to_html()
+        self.assertEqual(
+            html,
+            "<div><blockquote>This is a quote with multiple lines</blockquote></div>",
+        )
+
+    def test_quote_with_inline(self):
+        md = "> This is a **bold** quote"
+        node = markdown_to_html_node(md)
+        html = node.to_html()
+        self.assertEqual(
+            html, "<div><blockquote>This is a <b>bold</b> quote</blockquote></div>"
+        )
+
+    def test_unordered_list(self):
+        md = "- Item 1\n- Item 2\n- Item 3"
+        node = markdown_to_html_node(md)
+        html = node.to_html()
+        self.assertEqual(
+            html,
+            "<div><ul><li>Item 1</li><li>Item 2</li><li>Item 3</li></ul></div>",
+        )
+
+    def test_unordered_list_with_inline(self):
+        md = "- **Bold** item\n- _Italic_ item\n- `Code` item"
+        node = markdown_to_html_node(md)
+        html = node.to_html()
+        self.assertEqual(
+            html,
+            "<div><ul><li><b>Bold</b> item</li><li><i>Italic</i> item</li><li><code>Code</code> item</li></ul></div>",
+        )
+
+    def test_ordered_list(self):
+        md = "1. First item\n2. Second item\n3. Third item"
+        node = markdown_to_html_node(md)
+        html = node.to_html()
+        self.assertEqual(
+            html,
+            "<div><ol><li>First item</li><li>Second item</li><li>Third item</li></ol></div>",
+        )
+
+    def test_ordered_list_with_inline(self):
+        md = "1. **Bold** item\n2. _Italic_ item\n3. `Code` item"
+        node = markdown_to_html_node(md)
+        html = node.to_html()
+        self.assertEqual(
+            html,
+            "<div><ol><li><b>Bold</b> item</li><li><i>Italic</i> item</li><li><code>Code</code> item</li></ol></div>",
+        )
+
+    def test_mixed_blocks(self):
+        md = """# Heading
+
+This is a paragraph with **bold** text.
+
+- List item 1
+- List item 2
+
+> Quote block"""
+        node = markdown_to_html_node(md)
+        html = node.to_html()
+        self.assertIn("<h1>Heading</h1>", html)
+        self.assertIn("<p>This is a paragraph with <b>bold</b> text.</p>", html)
+        self.assertIn("<ul>", html)
+        self.assertIn("<blockquote>Quote block</blockquote>", html)
+
+    def test_code_block_single_line(self):
+        md = "```code here```"
+        node = markdown_to_html_node(md)
+        html = node.to_html()
+        self.assertEqual(html, "<div><pre><code>code here</code></pre></div>")
+
+    def test_code_block_with_language(self):
+        md = "```python\ndef hello():\n    print('world')\n```"
+        node = markdown_to_html_node(md)
+        html = node.to_html()
+        self.assertIn("<pre><code>", html)
+        self.assertIn("def hello():", html)
+
+    def test_paragraph_with_links_and_images(self):
+        md = "This is a [link](https://example.com) and an ![image](https://example.com/img.png)"
+        node = markdown_to_html_node(md)
+        html = node.to_html()
+        self.assertIn('<a href="https://example.com">link</a>', html)
+        self.assertIn(
+            '<img src="https://example.com/img.png" alt="image">', html
+        )
 
 
 if __name__ == "__main__":
